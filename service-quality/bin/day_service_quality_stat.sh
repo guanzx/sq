@@ -26,39 +26,42 @@ cd $(cd $(dirname $0)/..; pwd)
 # 将日期格式转为yyyy/mm/dd的格式
 format_stat_date=$(date -d "$stat_date" +%Y/%m/%d)
 
-#--- 计算客户端启动总量 ---
+# 取数据并解压缩
+function fetchDataAndUncompress {
+	
+	raw_data_dir=$1
+	local_raw_data_dir=$2
+	
+	# 取数据
+	[[ -d $local_raw_data_dir ]] && rm $local_raw_data_dir/*
+	wget -r -l1 -np -nd -A $FILE_APPEND $raw_data_dir -P $local_raw_data_dir
+
+	# 解压所有文件
+	gzip -d ${local_raw_data_dir}/BeiJing*.gz
+}
+
 # 客户端启动日志的服务器路径
 client_raw_data_dir=${CLIENT_START_PATH}/${format_stat_date}
-
 # 抓取日志到本地的路径
 local_client_raw_data_dir=${LOCAL_CLIENT_START_DIR}/${stat_date}
 
-# 取数据
-[[ -d $local_client_raw_data_dir ]] && rm $local_client_raw_data_dir/*
-wget -r -l1 -np -nd -A $FILE_APPEND $client_raw_data_dir -P $local_client_raw_data_dir
-
-# 解压所有文件
-gzip -d ${local_client_raw_data_dir}/BeiJing*.gz
-
-# 计算
-echo " Calc client start count..."
-client_start_count=$(cat ${local_client_raw_data_dir}/BeiJing* | wc -l)
-
-#----客户端启动总量计算完成---
-
-#---计算预下发素材列表以及获取量---
 # 预下发素材日志的服务器路径
 pre_mat_raw_dir=${PRE_MAT_PTAH}/${format_stat_date}
-
 # 本地存放的路径
 local_pre_mat_raw_dir=${LOCAL_PRE_MAT_DIR}/${stat_date}
 
-# 取数据
-[[ -d $local_pre_mat_raw_dir ]] && rm $local_pre_mat_raw_dir/*
-wget -r -l1 -np -nd -A $FILE_APPEND $pre_mat_raw_dir -P $local_pre_mat_raw_dir
+# 配置文件的服务器路径
+config_raw_dir=${CONFIG_PATH}/${format_stat_date}
+# 本地存放的路径
+local_config_raw_dir=${LOCAL_CONFIG_DIT}/${stat_date}
 
-# 解压所有文件
-gzip -d ${local_pre_mat_raw_dir}/BeiJing*.gz
+fetchDataAndUncompress $client_raw_data_dir $local_client_raw_data_dir
+fetchDataAndUncompress $pre_mat_raw_dir $local_pre_mat_raw_dir
+fetchDataAndUncompress $config_raw_dir $local_config_raw_dir
+ 
+# 计算客户端总量
+echo " Calc client start count..."
+client_start_count=$(cat ${local_client_raw_data_dir}/BeiJing* | wc -l)
 
 # 计算预下发素材列表失败数与成功数
 echo " Calc pre_mat list count..."
@@ -70,28 +73,10 @@ echo " Calc pre_mat get count..."
 preload_get_success_count=$(awk -F'\t' '{ if($5==1 && $6==1) sum=sum+$7};END{print sum}' ${local_pre_mat_raw_dir}/BeiJing*)
 preload_get_failure_count=$(awk -F'\t' '{if($5==1 && $6!=1) print $7}' ${local_pre_mat_raw_dir}/BeiJing* | awk -F',' '{sum=sum+NF};END{print sum}')
 
-#--预下发素材列表以及获取量计算完成---
-
-#---xml配置文件日志量统计---
-# 配置文件的服务器路径
-config_raw_dir=${CONFIG_PATH}/${format_stat_date}
-
-# 本地存放的路径
-local_config_raw_dir=${LOCAL_CONFIG_DIT}/${stat_date}
-
-# 取数据
-[[ -d $local_config_raw_dir ]] && rm $local_config_raw_dir/*
-wget -r -l1 -np -nd -A $FILE_APPEND $config_raw_dir -P $local_config_raw_dir
-
-# 解压所有文件
-gzip -d ${local_config_raw_dir}/BeiJing*.gz
-
-# 计算
+# 计算xml配置日志文件数
 echo " Calc xml config count..."
 ad_info_success_count=$(awk -F'\t' '{if( $5 == 1 ) n++};END{ print n }' ${local_config_raw_dir}/BeiJing*)
 ad_info_failure_count=$(awk -F'\t' '{if( $5 != 1 ) n++};END{ print n }' ${local_config_raw_dir}/BeiJing*)
-
-#---xml配置文件计算完成---
 
 #---load data into database---
 echo "load data into database"
