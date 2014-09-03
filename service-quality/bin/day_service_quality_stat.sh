@@ -103,4 +103,10 @@ VALUES(${client_start_count},${preloat_list_success_count},${preload_list_failur
 ,${ad_info_success_count},${ad_info_failure_count},${stat_date});"
 echo $sql |mysql $CONN_STR_ARTEMIS_DB
 
+# 删除前一天的数据
+stat_date=$(date -d "$stat_date - 1 days " +%Y%m%d)
+rm -rf local_client_raw_data_dir
+rm -rf local_pre_mat_raw_dir
+rm -rf local_config_raw_dir
+
 echo "...Finish..."
